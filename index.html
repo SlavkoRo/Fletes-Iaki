@@ -3,145 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
 <title>Fletes Iaki</title>
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
 <link rel="icon" href="icon.png">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
+<link rel="stylesheet" href="https://unpkg.com"/>
 <style>
 body { margin:0; font-family:sans-serif; background:#0f172a; color:white; }
 #map { height:50vh; }
-
 .panel { padding:15px; }
-
-input, button {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border-radius:10px;
-    border:none;
-}
-
-button { background:#22c55e; color:white; }
-
-.result {
-    margin-top:10px;
-    background:#38bdf8;
-    color:#000;
-    padding:10px;
-    border-radius:10px;
-    text-align:center;
-}
+input, button { width:100%; padding:12px; margin-top:10px; border-radius:10px; border:none; font-size: 16px; }
+button { background:#22c55e; color:white; font-weight: bold; cursor: pointer; }
+.result { margin-top:10px; background:#38bdf8; color:#000; padding:15px; border-radius:10px; text-align:center; font-weight: bold; }
 </style>
 </head>
-
 <body>
-
 <div id="map"></div>
-
 <div class="panel">
-
-<div style="text-align:center; font-weight:bold;">
-🚚 FLETES IAKI – MINI FLETES
+<div style="text-align:center; font-weight:bold; margin-bottom: 10px;">🚚 FLETES IAKI – MINI FLETES</div>
+<input id="destino" placeholder="Escribe el destino">
+<button onclick="calcular()">Calcular Presupuesto</button>
+<div id="res" class="result">El costo aparecerá aquí</div>
+<!-- WhatsApp Anulado -->
 </div>
-
-<input id="destino" placeholder="Destino">
-
-<button onclick="calcular()">Calcular</button>
-
-<div id="res" class="result"></div>
-
-<button onclick="ws()">WhatsApp</button>
-
-</div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
+<script src="https://unpkg.com"></script>
 <script>
 let map = L.map('map').setView([-34.65,-58.45],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-let km=0, mensaje="";
-let barrios=null;
-
+let km=0, barrios=null;
 const origenDir="Manuel Quindimil 741, Lanús";
 const dificiles=["Retiro","San Nicolas","San Telmo","Monserrat"];
-
-// GEO
 async function geo(dir){
- let r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dir + ", Buenos Aires")}`);
+ let r=await fetch(`https://openstreetmap.org{encodeURIComponent(dir + ", Buenos Aires")}`);
  let d=await r.json();
  if(!d.length) throw "Dirección no encontrada";
  return [parseFloat(d[0].lat),parseFloat(d[0].lon)];
 }
-
-// RUTA
 async function calcular(){
  try{
  let dest=document.getElementById("destino").value;
  if(!dest) return alert("Ingresá destino");
-
+ document.getElementById("res").innerHTML = "Calculando...";
  let o=await geo(origenDir);
  let d=await geo(dest);
-
- let r=await fetch(`https://router.project-osrm.org/route/v1/driving/${o[1]},${o[0]};${d[1]},${d[0]}?overview=false`);
+ let r=await fetch(`https://project-osrm.org{o[1]},${o[0]};${d[1]},${d[0]}?overview=false`);
  let j=await r.json();
-
  if(!j.routes || !j.routes.length) return alert("No se pudo calcular");
-
  km=j.routes[0].distance/1000;
-
  let zona=0;
  if(barrios){
-   barrios.eachLayer(l=>{
-     if(l.getBounds().contains(d)){
-        let n=l.feature.properties.name;
-        zona=dificiles.includes(n)?20000:10000;
-     }
-   });
+   barrios.eachLayer(l=>{ if(l.getBounds().contains(d)){
+     let n=l.feature.properties.name;
+     zona=dificiles.includes(n)?20000:10000;
+   }});
  }
-
  let total=Math.max(10000,(km>16?(km-16)*1500:0)+zona);
-
- document.getElementById("res").innerHTML=`${km.toFixed(1)} km<br>$${Math.round(total)}`;
-
- mensaje=`🚚 FLETES IAKI
-📍 ${km.toFixed(1)} km
-💰 $${Math.round(total)}`;
-
- }catch(e){
-   alert(e);
- }
+ document.getElementById("res").innerHTML=`Distancia: ${km.toFixed(1)} km<br>Total: $${Math.round(total)}`;
+ }catch(e){ alert("Error: " + e); }
 }
-
-// WHATSAPP
-function ws(){
- window.open("https://wa.me/5491137572110?text="+encodeURIComponent(mensaje));
-}
-
-// BARRIOS
-fetch("https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/buenos-aires-neighborhoods.geojson")
-.then(r=>r.json())
-.then(d=>{
- barrios=L.geoJSON(d,{
-  style:f=>{
+fetch("https://githubusercontent.com")
+.then(r=>r.json()).then(d=>{
+ barrios=L.geoJSON(d,{ style:f=>{
     let n=f.properties.name;
-    return dificiles.includes(n)
-      ?{color:"red",fillOpacity:0.4}
-      :{color:"yellow",fillOpacity:0.2};
-  }
- }).addTo(map);
+    return dificiles.includes(n)?{color:"red",fillOpacity:0.4}:{color:"yellow",fillOpacity:0.2};
+  }}).addTo(map);
 });
-
-// SERVICE WORKER
-if('serviceWorker' in navigator){
- navigator.serviceWorker.register('sw.js');
-}
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
 </script>
-
 </body>
 </html>
